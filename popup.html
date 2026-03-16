@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tab Reaper</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --surface: #12121a;
+      --surface2: #1a1a26;
+      --border: #2a2a3d;
+      --accent: #7c3aed;
+      --accent-glow: rgba(124, 58, 237, 0.25);
+      --accent2: #10b981;
+      --danger: #ef4444;
+      --warn: #f59e0b;
+      --text: #e2e8f0;
+      --text-muted: #64748b;
+      --text-dim: #94a3b8;
+      --mono: 'Space Mono', monospace;
+      --sans: 'DM Sans', sans-serif;
+
+      --group-grey: #6b7280;
+      --group-blue: #3b82f6;
+      --group-red: #ef4444;
+      --group-yellow: #f59e0b;
+      --group-green: #10b981;
+      --group-pink: #ec4899;
+      --group-purple: #8b5cf6;
+      --group-cyan: #06b6d4;
+      --group-orange: #f97316;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      width: 420px;
+      min-height: 520px;
+      max-height: 640px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 13px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ─────────────────────────────────────────── */
+    .header {
+      padding: 14px 16px 10px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+
+    .logo {
+      width: 28px;
+      height: 28px;
+      background: linear-gradient(135deg, var(--accent), #a855f7);
+      border-radius: 7px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      box-shadow: 0 0 12px var(--accent-glow);
+      flex-shrink: 0;
+    }
+
+    .header-title {
+      flex: 1;
+    }
+
+    .header-title h1 {
+      font-family: var(--mono);
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      color: var(--text);
+    }
+
+    .header-title p {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 1px;
+    }
+
+    .toggle-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .toggle {
+      position: relative;
+      width: 32px;
+      height: 17px;
+      cursor: pointer;
+    }
+    .toggle input { display: none; }
+    .toggle-track {
+      width: 100%;
+      height: 100%;
+      background: var(--border);
+      border-radius: 99px;
+      transition: background 0.2s;
+    }
+    .toggle input:checked ~ .toggle-track { background: var(--accent); }
+    .toggle-thumb {
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 13px;
+      height: 13px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 0.2s;
+    }
+    .toggle input:checked ~ .toggle-thumb { transform: translateX(15px); }
+
+    /* ── Tabs Navigation ─────────────────────────────────── */
+    .nav {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+
+    .nav-btn {
+      flex: 1;
+      padding: 9px 4px;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--sans);
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      letter-spacing: 0.03em;
+    }
+    .nav-btn:hover { color: var(--text-dim); }
+    .nav-btn.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+
+    .badge {
+      background: var(--accent);
+      color: white;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 99px;
+      font-family: var(--mono);
+    }
+
+    /* ── Panels ──────────────────────────────────────────── */
+    .panels {
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .panel {
+      display: none;
+      flex-direction: column;
+      height: 100%;
+      overflow: hidden;
+    }
+    .panel.active { display: flex; }
+
+    /* ── Vault Panel ─────────────────────────────────────── */
+    .search-bar {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      gap: 8px;
+      background: var(--surface);
+      flex-shrink: 0;
+      align-items: center;
+    }
+
+    .search-input {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 10px;
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 12px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .search-input:focus { border-color: var(--accent); }
+    .search-input::placeholder { color: var(--text-muted); }
+
+    .clear-btn {
+      padding: 6px 10px;
+      background: var(--danger);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 11px;
+      cursor: pointer;
+      font-family: var(--sans);
+      font-weight: 500;
+      white-space: nowrap;
+      transition: opacity 0.15s;
+    }
+    .clear-btn:hover { opacity: 0.85; }
+
+    .vault-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+    }
+    .vault-list::-webkit-scrollbar { width: 4px; }
+    .vault-list::-webkit-scrollbar-track { background: transparent; }
+    .vault-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    /* Group sections */
+    .group-section {
+      margin-bottom: 12px;
+    }
+
+    .group-header {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 5px 6px;
+      border-radius: 6px;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.1s;
+    }
+    .group-header:hover { background: var(--surface2); }
+
+    .group-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .group-name {
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      flex: 1;
+    }
+
+    .group-count {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    .group-chevron {
+      font-size: 10px;
+      color: var(--text-muted);
+      transition: transform 0.2s;
+    }
+    .group-section.collapsed .group-chevron { transform: rotate(-90deg); }
+    .group-section.collapsed .group-tabs { display: none; }
+
+    .group-tabs {
+      margin-top: 3px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding-left: 6px;
+    }
+
+    /* Tab item */
+    .tab-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 8px;
+      background: var(--surface);
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: all 0.15s;
+      position: relative;
+      overflow: hidden;
+    }
+    .tab-item::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: var(--group-color, var(--border));
+    }
+    .tab-item:hover {
+      border-color: var(--accent);
+      background: var(--surface2);
+    }
+
+    .tab-favicon {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+      border-radius: 2px;
+    }
+
+    .tab-info { flex: 1; min-width: 0; }
+
+    .tab-title {
+      font-size: 12px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--text);
+    }
+
+    .tab-url {
+      font-size: 10px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 1px;
+    }
+
+    .tab-time {
+      font-family: var(--mono);
+      font-size: 9px;
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    .tab-actions {
+      display: flex;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+
+    .tab-btn {
+      width: 22px;
+      height: 22px;
+      border-radius: 4px;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      transition: all 0.1s;
+    }
+
+    .tab-btn.restore {
+      background: rgba(16,185,129,0.15);
+      color: var(--accent2);
+    }
+    .tab-btn.restore:hover { background: rgba(16,185,129,0.3); }
+
+    .tab-btn.delete {
+      background: rgba(239,68,68,0.1);
+      color: var(--danger);
+    }
+    .tab-btn.delete:hover { background: rgba(239,68,68,0.25); }
+
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      gap: 8px;
+      color: var(--text-muted);
+      padding: 40px 20px;
+      text-align: center;
+    }
+    .empty-state .icon { font-size: 32px; opacity: 0.4; }
+    .empty-state p { font-size: 12px; line-height: 1.5; }
+
+    /* ── Settings Panel ──────────────────────────────────── */
+    .settings-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .setting-group {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .setting-group-title {
+      padding: 8px 12px;
+      font-family: var(--mono);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .setting-row {
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .setting-row:last-child { border-bottom: none; }
+
+    .setting-label {
+      flex: 1;
+    }
+    .setting-label strong {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text);
+    }
+    .setting-label span {
+      font-size: 10px;
+      color: var(--text-muted);
+      display: block;
+      margin-top: 1px;
+    }
+
+    .setting-control {
+      flex-shrink: 0;
+    }
+
+    .num-input {
+      width: 60px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 5px 8px;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 12px;
+      text-align: center;
+      outline: none;
+    }
+    .num-input:focus { border-color: var(--accent); }
+
+    .settings-footer {
+      padding: 10px 12px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 6px;
+      flex-shrink: 0;
+      background: var(--surface);
+    }
+
+    .btn-primary {
+      flex: 1;
+      padding: 8px;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-family: var(--sans);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .btn-primary:hover { opacity: 0.85; }
+
+    .btn-danger {
+      padding: 8px 14px;
+      background: rgba(239,68,68,0.15);
+      color: var(--danger);
+      border: 1px solid rgba(239,68,68,0.3);
+      border-radius: 6px;
+      font-family: var(--sans);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-danger:hover { background: rgba(239,68,68,0.25); }
+
+    /* ── Dashboard Panel ─────────────────────────────────── */
+    .dash-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .stat-label {
+      font-size: 10px;
+      color: var(--text-muted);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .stat-value {
+      font-family: var(--mono);
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .stat-sub {
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    .reap-btn {
+      padding: 10px;
+      background: linear-gradient(135deg, var(--accent), #a855f7);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      box-shadow: 0 0 20px var(--accent-glow);
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .reap-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 24px var(--accent-glow);
+    }
+    .reap-btn:active { transform: translateY(0); }
+
+    .group-breakdown {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .breakdown-title {
+      padding: 8px 12px;
+      font-size: 10px;
+      font-family: var(--mono);
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .breakdown-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .breakdown-row:last-child { border-bottom: none; }
+
+    .breakdown-bar-wrap {
+      flex: 1;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .breakdown-bar {
+      height: 100%;
+      border-radius: 2px;
+      transition: width 0.4s ease;
+    }
+
+    .breakdown-count {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--text-muted);
+      width: 20px;
+      text-align: right;
+    }
+
+    /* ── Toast ───────────────────────────────────────────── */
+    .toast {
+      position: fixed;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%) translateY(60px);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: 12px;
+      color: var(--text);
+      transition: transform 0.2s ease;
+      z-index: 9999;
+      white-space: nowrap;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+
+    .accent { color: var(--accent); }
+    .green { color: var(--accent2); }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">💀</div>
+  <div class="header-title">
+    <h1>TAB REAPER</h1>
+    <p id="status-text">Loading…</p>
+  </div>
+  <div class="toggle-pill">
+    <label class="toggle">
+      <input type="checkbox" id="enabled-toggle" />
+      <div class="toggle-track"></div>
+      <div class="toggle-thumb"></div>
+    </label>
+  </div>
+</div>
+
+<nav class="nav">
+  <button class="nav-btn active" data-tab="dash">📊 Dashboard</button>
+  <button class="nav-btn" data-tab="vault">🗄️ Vault <span class="badge" id="vault-badge">0</span></button>
+  <button class="nav-btn" data-tab="settings">⚙️ Settings</button>
+</nav>
+
+<div class="panels">
+
+  <!-- Dashboard -->
+  <div class="panel active" id="panel-dash">
+    <div class="dash-body">
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-label">Open Tabs</div>
+          <div class="stat-value accent" id="stat-open">–</div>
+          <div class="stat-sub">in this browser</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Vaulted</div>
+          <div class="stat-value green" id="stat-vault">–</div>
+          <div class="stat-sub">tabs saved total</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Reap After</div>
+          <div class="stat-value" id="stat-timeout">–</div>
+          <div class="stat-sub">minutes inactive</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Check Every</div>
+          <div class="stat-value" id="stat-interval">–</div>
+          <div class="stat-sub">minutes</div>
+        </div>
+      </div>
+
+      <button class="reap-btn" id="reap-now-btn">
+        💀 REAP INACTIVE NOW
+      </button>
+
+      <div class="group-breakdown">
+        <div class="breakdown-title">Vault by Group</div>
+        <div id="breakdown-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Vault -->
+  <div class="panel" id="panel-vault">
+    <div class="search-bar">
+      <input type="text" class="search-input" id="search-input" placeholder="Search vaulted tabs…" />
+      <button class="clear-btn" id="clear-all-btn">Clear All</button>
+    </div>
+    <div class="vault-list" id="vault-list"></div>
+  </div>
+
+  <!-- Settings -->
+  <div class="panel" id="panel-settings">
+    <div class="settings-body">
+      <div class="setting-group">
+        <div class="setting-group-title">Timing</div>
+        <div class="setting-row">
+          <div class="setting-label">
+            <strong>Inactive Threshold</strong>
+            <span>Minutes before a tab is reaped</span>
+          </div>
+          <div class="setting-control">
+            <input type="number" class="num-input" id="s-inactive" min="1" max="1440" />
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">
+            <strong>Check Interval</strong>
+            <span>How often to scan for inactive tabs</span>
+          </div>
+          <div class="setting-control">
+            <input type="number" class="num-input" id="s-interval" min="1" max="60" />
+          </div>
+        </div>
+      </div>
+
+      <div class="setting-group">
+        <div class="setting-group-title">Exclusions</div>
+        <div class="setting-row">
+          <div class="setting-label">
+            <strong>Exclude Pinned Tabs</strong>
+            <span>Never reap pinned tabs</span>
+          </div>
+          <div class="setting-control">
+            <label class="toggle">
+              <input type="checkbox" id="s-pinned" />
+              <div class="toggle-track"></div>
+              <div class="toggle-thumb"></div>
+            </label>
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">
+            <strong>Exclude Playing Audio</strong>
+            <span>Keep tabs with active audio</span>
+          </div>
+          <div class="setting-control">
+            <label class="toggle">
+              <input type="checkbox" id="s-audible" />
+              <div class="toggle-track"></div>
+              <div class="toggle-thumb"></div>
+            </label>
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">
+            <strong>Exclude Active Tab</strong>
+            <span>Never reap the currently focused tab</span>
+          </div>
+          <div class="setting-control">
+            <label class="toggle">
+              <input type="checkbox" id="s-active" />
+              <div class="toggle-track"></div>
+              <div class="toggle-thumb"></div>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="setting-group">
+        <div class="setting-group-title">Notifications</div>
+        <div class="setting-row">
+          <div class="setting-label">
+            <strong>Notify on Reap</strong>
+            <span>Show notification when tabs are reaped</span>
+          </div>
+          <div class="setting-control">
+            <label class="toggle">
+              <input type="checkbox" id="s-notify" />
+              <div class="toggle-track"></div>
+              <div class="toggle-thumb"></div>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="settings-footer">
+      <button class="btn-primary" id="save-settings-btn">Save Settings</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="popup.js"></script>
+</body>
+</html>
