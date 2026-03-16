@@ -32,7 +32,6 @@ async function loadData() {
   };
   vault = result.vault || [];
 
-  // Update header toggle
   document.getElementById('enabled-toggle').checked = settings.enabled;
   document.getElementById('enabled-toggle').addEventListener('change', async (e) => {
     settings.enabled = e.target.checked;
@@ -58,7 +57,7 @@ function setupNav() {
       document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
       document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
       btn.classList.add('active');
-      document.getElementById(`panel-${btn.dataset.tab}`).classList.add('active');
+      document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
     });
   });
 }
@@ -80,7 +79,6 @@ async function setupDashboard() {
 }
 
 async function renderDashboard() {
-  // Stats
   const tabs = await chrome.tabs.query({});
   document.getElementById('stat-open').textContent = tabs.length;
   document.getElementById('stat-vault').textContent = vault.length;
@@ -88,7 +86,6 @@ async function renderDashboard() {
   document.getElementById('stat-interval').textContent = settings.checkIntervalMinutes;
   document.getElementById('vault-badge').textContent = vault.length;
 
-  // Group breakdown
   const groups = groupVault(vault);
   const keys = Object.keys(groups);
   const maxCount = Math.max(...keys.map(k => groups[k].items.length), 1);
@@ -106,14 +103,11 @@ async function renderDashboard() {
     const color = grp.color || NO_GROUP_COLOR;
     const row = document.createElement('div');
     row.className = 'breakdown-row';
-    row.innerHTML = `
-      <div style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0;"></div>
-      <div style="font-size:11px;color:var(--text-dim);flex:0 0 110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${grp.name}</div>
-      <div class="breakdown-bar-wrap">
-        <div class="breakdown-bar" style="width:${pct}%;background:${color};"></div>
-      </div>
-      <div class="breakdown-count">${grp.items.length}</div>
-    `;
+    row.innerHTML =
+      '<div style="width:8px;height:8px;border-radius:50%;background:' + color + ';flex-shrink:0;"></div>' +
+      '<div style="font-size:11px;color:var(--text-dim);flex:0 0 110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + grp.name + '</div>' +
+      '<div class="breakdown-bar-wrap"><div class="breakdown-bar" style="width:' + pct + '%;background:' + color + ';"></div></div>' +
+      '<div class="breakdown-count">' + grp.items.length + '</div>';
     container.appendChild(row);
   });
 }
@@ -149,19 +143,19 @@ function groupVault(items) {
       groups[key] = {
         name: key,
         color: item.groupColor ? GROUP_COLORS[item.groupColor] : NO_GROUP_COLOR,
+        rawColor: item.groupColor || null,
         items: []
       };
     }
     groups[key].items.push(item);
   });
 
-  // Sort: named groups first, then ungrouped
   const sorted = {};
   Object.keys(groups).sort((a, b) => {
     if (a === NO_GROUP_NAME) return 1;
     if (b === NO_GROUP_NAME) return -1;
     return a.localeCompare(b);
-  }).forEach(k => sorted[k] = groups[k]);
+  }).forEach(k => { sorted[k] = groups[k]; });
 
   return sorted;
 }
@@ -173,43 +167,93 @@ function renderVault() {
   container.innerHTML = '';
 
   if (vault.length === 0) {
-    container.innerHTML = `
-      <div class="empty-state">
-        <div class="icon">🗄️</div>
-        <p>Your vault is empty.<br/>Inactive tabs will be saved here automatically.</p>
-      </div>`;
+    container.innerHTML =
+      '<div class="empty-state"><div class="icon">🗄️</div><p>Your vault is empty.<br/>Inactive tabs will be saved here automatically.</p></div>';
     return;
   }
 
   if (keys.length === 0) {
-    container.innerHTML = `
-      <div class="empty-state">
-        <div class="icon">🔍</div>
-        <p>No tabs match your search.</p>
-      </div>`;
+    container.innerHTML =
+      '<div class="empty-state"><div class="icon">🔍</div><p>No tabs match your search.</p></div>';
     return;
   }
 
   keys.forEach(key => {
     const grp = groups[key];
     const color = grp.color || NO_GROUP_COLOR;
+    const isNamed = grp.name !== NO_GROUP_NAME;
 
     const section = document.createElement('div');
     section.className = 'group-section';
     section.dataset.key = key;
 
+    // ── Group Header ──────────────────────────────────────
     const header = document.createElement('div');
     header.className = 'group-header';
-    header.innerHTML = `
-      <div class="group-dot" style="background:${color};box-shadow:0 0 6px ${color}55;"></div>
-      <div class="group-name" style="color:${color};">${grp.name}</div>
-      <div class="group-count">${grp.items.length} tab${grp.items.length !== 1 ? 's' : ''}</div>
-      <div class="group-chevron">▾</div>
-    `;
-    header.addEventListener('click', () => {
+
+    const dot = document.createElement('div');
+    dot.className = 'group-dot';
+    dot.style.cssText = 'background:' + color + ';box-shadow:0 0 6px ' + color + '55;';
+
+    const nameEl = document.createElement('div');
+    nameEl.className = 'group-name';
+    nameEl.style.color = color;
+    nameEl.textContent = grp.name;
+
+    const countEl = document.createElement('div');
+    countEl.className = 'group-count';
+    countEl.textContent = grp.items.length + ' tab' + (grp.items.length !== 1 ? 's' : '');
+
+    const chevron = document.createElement('div');
+    chevron.className = 'group-chevron';
+    chevron.textContent = '▾';
+
+    header.appendChild(dot);
+    header.appendChild(nameEl);
+    header.appendChild(countEl);
+
+    // ── Restore Group Button (only for named groups) ──────
+    if (isNamed) {
+      const restoreGroupBtn = document.createElement('button');
+      restoreGroupBtn.className = 'group-restore-btn';
+      restoreGroupBtn.title = 'Restore all tabs as a tab group with original name & color';
+      restoreGroupBtn.innerHTML = '⊞ Restore Group';
+      restoreGroupBtn.style.setProperty('--gc', color);
+
+      restoreGroupBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        restoreGroupBtn.textContent = '⏳…';
+        restoreGroupBtn.disabled = true;
+        try {
+          await chrome.runtime.sendMessage({
+            action: 'restoreGroup',
+            items: grp.items,
+            groupName: grp.name,
+            groupColor: grp.rawColor
+          });
+          const ids = new Set(grp.items.map(i => i.id));
+          vault = vault.filter(t => !ids.has(t.id));
+          await chrome.storage.local.set({ vault });
+          renderAll();
+          showToast('⊞ "' + grp.name + '" restored as tab group');
+        } catch (err) {
+          restoreGroupBtn.textContent = '⊞ Restore Group';
+          restoreGroupBtn.disabled = false;
+          showToast('❌ Could not restore group');
+        }
+      });
+
+      header.appendChild(restoreGroupBtn);
+    }
+
+    header.appendChild(chevron);
+
+    header.addEventListener('click', (e) => {
+      if (e.target.classList.contains('group-restore-btn') || e.target.closest('.group-restore-btn')) return;
       section.classList.toggle('collapsed');
     });
 
+    // ── Tab List ──────────────────────────────────────────
     const tabList = document.createElement('div');
     tabList.className = 'group-tabs';
 
@@ -218,35 +262,62 @@ function renderVault() {
       el.className = 'tab-item';
       el.style.setProperty('--group-color', color);
 
-      const domain = (() => {
-        try { return new URL(item.url).hostname; } catch { return item.url; }
+      const domain = (function() {
+        try { return new URL(item.url).hostname; } catch (e) { return item.url; }
       })();
 
       const age = formatAge(item.reaped_at);
 
-      el.innerHTML = `
-        ${item.favIconUrl
-          ? `<img class="tab-favicon" src="${item.favIconUrl}" onerror="this.style.display='none'" />`
-          : `<div class="tab-favicon" style="background:${color}22;border-radius:2px;"></div>`
-        }
-        <div class="tab-info">
-          <div class="tab-title">${escapeHtml(item.title)}</div>
-          <div class="tab-url">${escapeHtml(domain)}</div>
-        </div>
-        <div class="tab-time">${age}</div>
-        <div class="tab-actions">
-          <button class="tab-btn restore" title="Restore tab">↗</button>
-          <button class="tab-btn delete" title="Remove from vault">✕</button>
-        </div>
-      `;
+      const favicon = document.createElement('div');
+      if (item.favIconUrl) {
+        const img = document.createElement('img');
+        img.className = 'tab-favicon';
+        img.src = item.favIconUrl;
+        img.onerror = function() { this.style.display = 'none'; };
+        favicon.appendChild(img);
+      } else {
+        const placeholder = document.createElement('div');
+        placeholder.className = 'tab-favicon';
+        placeholder.style.cssText = 'background:' + color + '22;border-radius:2px;';
+        favicon.appendChild(placeholder);
+      }
 
-      el.querySelector('.restore').addEventListener('click', async (e) => {
+      const info = document.createElement('div');
+      info.className = 'tab-info';
+      info.innerHTML =
+        '<div class="tab-title">' + escapeHtml(item.title) + '</div>' +
+        '<div class="tab-url">' + escapeHtml(domain) + '</div>';
+
+      const timeEl = document.createElement('div');
+      timeEl.className = 'tab-time';
+      timeEl.textContent = age;
+
+      const actions = document.createElement('div');
+      actions.className = 'tab-actions';
+
+      // Individual restore button
+      const restoreBtn = document.createElement('button');
+      restoreBtn.className = 'tab-btn restore';
+      restoreBtn.title = 'Open this tab individually';
+      restoreBtn.textContent = '↗';
+
+      restoreBtn.addEventListener('click', async (e) => {
         e.stopPropagation();
         await chrome.runtime.sendMessage({ action: 'restoreTab', url: item.url });
-        showToast('↗ Tab restored');
+        // Remove from vault after restoring
+        vault = vault.filter(t => t.id !== item.id);
+        await chrome.storage.local.set({ vault });
+        renderAll();
+        showToast('↗ Tab opened');
       });
 
-      el.querySelector('.delete').addEventListener('click', async (e) => {
+      // Delete button
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'tab-btn delete';
+      deleteBtn.title = 'Remove from vault';
+      deleteBtn.textContent = '✕';
+
+      deleteBtn.addEventListener('click', async (e) => {
         e.stopPropagation();
         vault = vault.filter(t => t.id !== item.id);
         await chrome.storage.local.set({ vault });
@@ -254,8 +325,21 @@ function renderVault() {
         showToast('🗑️ Removed from vault');
       });
 
+      actions.appendChild(restoreBtn);
+      actions.appendChild(deleteBtn);
+
+      el.appendChild(favicon.firstChild || favicon);
+      el.appendChild(info);
+      el.appendChild(timeEl);
+      el.appendChild(actions);
+
+      // Click anywhere on tab item = open individually
       el.addEventListener('click', async () => {
         await chrome.runtime.sendMessage({ action: 'restoreTab', url: item.url });
+        vault = vault.filter(t => t.id !== item.id);
+        await chrome.storage.local.set({ vault });
+        renderAll();
+        showToast('↗ Tab opened');
       });
 
       tabList.appendChild(el);
@@ -313,9 +397,9 @@ function formatAge(ts) {
   const m = Math.floor(diff / 60000);
   const h = Math.floor(m / 60);
   const d = Math.floor(h / 24);
-  if (d > 0) return `${d}d`;
-  if (h > 0) return `${h}h`;
-  if (m > 0) return `${m}m`;
+  if (d > 0) return d + 'd';
+  if (h > 0) return h + 'h';
+  if (m > 0) return m + 'm';
   return 'now';
 }
 
@@ -333,5 +417,5 @@ function showToast(msg) {
   el.textContent = msg;
   el.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
+  toastTimer = setTimeout(() => { el.classList.remove('show'); }, 2500);
 }

@@ -164,6 +164,28 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     chrome.tabs.create({ url: msg.url }).then(() => sendResponse({ ok: true }));
     return true;
   }
+  if (msg.action === 'restoreGroup') {
+    // Opens all tabs and groups them together with original name + color
+    (async () => {
+      const { items, groupName, groupColor } = msg;
+      const tabIds = [];
+      for (const item of items) {
+        const tab = await chrome.tabs.create({ url: item.url, active: false });
+        tabIds.push(tab.id);
+      }
+      // Create the group
+      const groupId = await chrome.tabs.group({ tabIds });
+      // Apply original name and color if available
+      const updateProps = {};
+      if (groupName && groupName !== 'Ungrouped') updateProps.title = groupName;
+      if (groupColor) updateProps.color = groupColor;
+      if (Object.keys(updateProps).length > 0) {
+        await chrome.tabGroups.update(groupId, updateProps);
+      }
+      sendResponse({ ok: true, groupId });
+    })();
+    return true;
+  }
   if (msg.action === 'getStatus') {
     chrome.tabs.query({}).then(tabs => {
       sendResponse({ tabCount: tabs.length, tracked: Object.keys(tabLastActive).length });
