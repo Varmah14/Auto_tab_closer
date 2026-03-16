@@ -80,12 +80,50 @@ async function setupDashboard() {
 
 async function renderDashboard() {
   const tabs = await chrome.tabs.query({});
+  const activeTabs = await chrome.tabs.query({ active: true });
+  const activeIds = new Set(activeTabs.map(t => t.id));
+
   document.getElementById('stat-open').textContent = tabs.length;
   document.getElementById('stat-vault').textContent = vault.length;
   document.getElementById('stat-timeout').textContent = settings.inactiveMinutes;
   document.getElementById('stat-interval').textContent = settings.checkIntervalMinutes;
   document.getElementById('vault-badge').textContent = vault.length;
 
+  // Render open tabs list
+  const openList = document.getElementById('open-tabs-list');
+  openList.innerHTML = '';
+  tabs.forEach(tab => {
+    const row = document.createElement('div');
+    row.className = 'open-tab-row';
+    row.title = tab.url;
+
+    const favicon = document.createElement('img');
+    favicon.src = tab.favIconUrl || '';
+    favicon.onerror = function() { this.style.display = 'none'; };
+
+    const title = document.createElement('div');
+    title.className = 'open-tab-title';
+    title.textContent = tab.title || tab.url || 'New Tab';
+
+    row.appendChild(favicon);
+    row.appendChild(title);
+
+    if (activeIds.has(tab.id)) {
+      const dot = document.createElement('div');
+      dot.className = 'open-tab-active';
+      dot.title = 'Currently active';
+      row.appendChild(dot);
+    }
+
+    row.addEventListener('click', () => {
+      chrome.tabs.update(tab.id, { active: true });
+      chrome.windows.update(tab.windowId, { focused: true });
+    });
+
+    openList.appendChild(row);
+  });
+
+  // Vault breakdown by group
   const groups = groupVault(vault);
   const keys = Object.keys(groups);
   const maxCount = Math.max(...keys.map(k => groups[k].items.length), 1);

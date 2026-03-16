@@ -668,6 +668,54 @@
 
     .accent { color: var(--accent); }
     .green { color: var(--accent2); }
+
+    .open-tabs-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      max-height: 160px;
+      display: flex;
+      flex-direction: column;
+    }
+    #open-tabs-list {
+      overflow-y: auto;
+      flex: 1;
+    }
+    #open-tabs-list::-webkit-scrollbar { width: 4px; }
+    #open-tabs-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    .open-tab-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    .open-tab-row:last-child { border-bottom: none; }
+    .open-tab-row:hover { background: var(--surface2); }
+    .open-tab-row img {
+      width: 13px;
+      height: 13px;
+      flex-shrink: 0;
+      border-radius: 2px;
+    }
+    .open-tab-title {
+      font-size: 11px;
+      color: var(--text-dim);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex: 1;
+    }
+    .open-tab-active {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--accent2);
+      flex-shrink: 0;
+    }
   </style>
 </head>
 <body>
@@ -700,11 +748,6 @@
     <div class="dash-body">
       <div class="stat-grid">
         <div class="stat-card">
-          <div class="stat-label">Open Tabs</div>
-          <div class="stat-value accent" id="stat-open">–</div>
-          <div class="stat-sub">in this browser</div>
-        </div>
-        <div class="stat-card">
           <div class="stat-label">Vaulted</div>
           <div class="stat-value green" id="stat-vault">–</div>
           <div class="stat-sub">tabs saved total</div>
@@ -719,6 +762,11 @@
           <div class="stat-value" id="stat-interval">–</div>
           <div class="stat-sub">minutes</div>
         </div>
+      </div>
+
+      <div class="open-tabs-panel">
+        <div class="breakdown-title" style="border-radius:8px 8px 0 0;">Open Tabs <span id="stat-open" style="color:var(--accent);font-family:var(--mono);">–</span></div>
+        <div id="open-tabs-list"></div>
       </div>
 
       <button class="reap-btn" id="reap-now-btn">
